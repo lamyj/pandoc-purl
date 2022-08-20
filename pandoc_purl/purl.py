@@ -20,7 +20,8 @@ def purl(type_, value, format_, meta_data):
     chunk_options = chunk_defaults.copy()
     chunk_options.update(
         {
-            k: bool(v) if v.lower() in ["true", "false"] else v
+            k: eval(v.lower().capitalize())
+                if v.lower() in ["true", "false"] else v
             for k,v in value_meta_data})
     
     if "python" not in classes or not chunk_options["eval"]:
