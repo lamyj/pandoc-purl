@@ -29,34 +29,29 @@ def purl(type_, value, format_, meta_data):
     value_meta_data = [
         (k,v) for (k,v) in value_meta_data if k not in chunk_options]
     
-    old_stdout = sys.stdout
+    old_stdout, old_stderr = sys.stdout, sys.stderr
     sys.stdout = io.StringIO()
-    old_stderr = sys.stderr
     sys.stderr = sys.stdout
+    tb = None
     try:
         tree = ast.parse(textwrap.dedent(content))
         result = None
         for child in ast.iter_child_nodes(tree):
-            if isinstance(child, ast.Expr):
-                result = eval(
-                    compile(ast.unparse(child), "<string>", "eval"),
-                    globals(), globals())
-                if result:
-                    result = str(result)
-            else:
-                result = exec(
-                    compile(ast.unparse(child), "<string>", "exec"),
-                    globals(), globals())
+            runner = eval if isinstance(child, ast.Expr) else exec
+            compiled = compile(ast.unparse(child), "<string>", runner.__name__)
+            result = runner(compiled, globals(), globals())
+            
+            if runner.__name__ is eval:
+                result = str(result)
     except Exception as e:
-        result = (
-            sys.stdout.getvalue()
-            + "\n"
-            + "\n".join(traceback.format_exception(*sys.exc_info())))
+        tb = traceback.format_exception(*sys.exc_info())
+    
+    if tb:
+        result = "\n".join([sys.stdout.getvalue(), "", *tb])
+    elif result:
+        result = "\n".join([sys.stdout.getvalue(), result])
     else:
-        if result:
-            result = sys.stdout.getvalue() + "\n" + result
-        else:
-            result = sys.stdout.getvalue()
+        result = sys.stdout.getvalue()
     
     result = result.strip("\n")
     
