@@ -1,6 +1,6 @@
 # pandoc-purl
 
-![PyPI](https://img.shields.io/pypi/v/pandoc-purl)
+[![PyPI](https://img.shields.io/pypi/v/pandoc-purl)](https://pypi.org/project/pandoc-purl/)
 
 *pandoc-purl* is [Pandoc](https://pandoc.org) filter for literate
 programming and dynamic document generation in Python. It is similar in
