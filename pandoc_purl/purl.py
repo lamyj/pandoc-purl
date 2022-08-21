@@ -41,16 +41,13 @@ def purl(type_, value, format_, meta_data):
             runner = eval if isinstance(child, ast.Expr) else exec
             compiled = compile(ast.unparse(child), "<string>", runner.__name__)
             result = runner(compiled, globals(), globals())
-            
-            if runner.__name__ is eval:
-                result = str(result)
     except Exception as e:
         tb = traceback.format_exception(*sys.exc_info())
     
     if tb:
         result = "\n".join([sys.stdout.getvalue(), "", *tb])
     elif result:
-        result = "\n".join([sys.stdout.getvalue(), result])
+        result = "".join([sys.stdout.getvalue(), str(result)])
     else:
         result = sys.stdout.getvalue()
     
