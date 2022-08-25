@@ -50,6 +50,7 @@ setup(
 
     packages=find_packages(),
     include_package_data=True,
+    python_requires=">=3.8",
     install_requires=["pandocfilters"],
     
     entry_points={ "console_scripts": [ "pandoc-purl=pandoc_purl.main:main"] },

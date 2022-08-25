@@ -35,11 +35,14 @@ def purl(type_, value, format_, meta_data):
     sys.stderr = sys.stdout
     tb = None
     try:
-        tree = ast.parse(textwrap.dedent(content))
+        content = textwrap.dedent(content)
+        tree = ast.parse(content)
         result = None
         for child in ast.iter_child_nodes(tree):
             runner = eval if isinstance(child, ast.Expr) else exec
-            compiled = compile(ast.unparse(child), "<string>", runner.__name__)
+            compiled = compile(
+                ast.get_source_segment(content, child),
+                "<string>", runner.__name__)
             result = runner(compiled, globals(), globals())
     except Exception as e:
         tb = traceback.format_exception(*sys.exc_info())
