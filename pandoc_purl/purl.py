@@ -30,34 +30,7 @@ def purl(type_, value, format_, meta_data):
     value_meta_data = [
         (k,v) for (k,v) in value_meta_data if k not in chunk_defaults]
     
-    old_stdout, old_stderr = sys.stdout, sys.stderr
-    sys.stdout = io.StringIO()
-    sys.stderr = sys.stdout
-    tb = None
-    try:
-        content = textwrap.dedent(content)
-        tree = ast.parse(content)
-        result = None
-        for child in ast.iter_child_nodes(tree):
-            runner = eval if isinstance(child, ast.Expr) else exec
-            compiled = compile(
-                ast.get_source_segment(content, child),
-                "<string>", runner.__name__)
-            result = runner(compiled, globals(), globals())
-    except Exception as e:
-        tb = traceback.format_exception(*sys.exc_info())
-    
-    if tb:
-        result = "\n".join([sys.stdout.getvalue(), "", *tb])
-    elif result:
-        result = "".join([sys.stdout.getvalue(), str(result)])
-    else:
-        result = sys.stdout.getvalue()
-    
-    result = result.strip("\n")
-    
-    sys.stdout = old_stdout
-    sys.stderr = old_stderr
+    result, is_traceback = __purl_capture(textwrap.dedent(content))
     
     blocks = []
     if type_ == "CodeBlock" and chunk_options["echo"]:
@@ -80,3 +53,48 @@ def purl(type_, value, format_, meta_data):
             blocks.append(pandocfilters.CodeBlock(["", [], []], result))
         
     return blocks
+
+def __purl_exec(content):
+    tree = ast.parse(content)
+    
+    # Check whether we have a final expression. If so remove it from the tree
+    # and keep it for later
+    final = None
+    for name, nodes in ast.iter_fields(tree):
+        if name != "body":
+            continue
+        if nodes and isinstance(nodes[-1], ast.Expr):
+            final = ast.Expression(nodes.pop().value)
+    
+    # The tree is now a sequence of statements without a final expression.
+    # It can be exec()ed since there is no return value
+    exec(compile(tree, "<string>", "exec"), globals(), globals())
+    # If there was a final expression in the tree, eval() it and get its result
+    result = None
+    if final:
+        result = eval(compile(final, "<string>", "eval"), globals(), globals())
+    return result
+
+def __purl_capture(content):
+    old_stdout, old_stderr = sys.stdout, sys.stderr
+    sys.stdout = io.StringIO()
+    sys.stderr = sys.stdout
+    
+    tb = None
+    result = None
+    try:
+        result = __purl_exec(content)
+    except Exception as e:
+        tb = traceback.format_exception(*sys.exc_info())
+    
+    if tb:
+        result = "\n".join([sys.stdout.getvalue(), "", *tb])
+    elif result:
+        result = "".join([sys.stdout.getvalue(), str(result)])
+    else:
+        result = sys.stdout.getvalue()
+    
+    sys.stdout = old_stdout
+    sys.stderr = old_stderr
+    
+    return result, tb is not None
