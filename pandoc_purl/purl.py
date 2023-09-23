@@ -10,7 +10,7 @@ import pandocfilters
 
 chunk_defaults = {
     "eval": True, # Whether to run the code chunk
-    "echo": True, # Whether to show the code chunk
+    "echo": True, # Whether to show the code chunk (code block only)
     "results": "asis", # if "markup", pass to pandoc; if "hide", hide results
 }
 
@@ -39,6 +39,8 @@ def purl(type_, value, format_, meta_data):
     
     if type_ == "CodeBlock":
         return __purl_codeblock(value, format_, meta_data)
+    elif type_ == "Code":
+        return __purl_inline(value, format_, meta_data)
     
     result, is_traceback = __purl_capture(textwrap.dedent(content))
     
@@ -61,17 +63,7 @@ def purl(type_, value, format_, meta_data):
 
 def __purl_codeblock(value, format_, meta):
     (identifiers, classes, value_meta_data), content = value
-    chunk_options = chunk_defaults.copy()
-    chunk_options.update(
-        {
-            k: eval(v.lower().capitalize())
-                if v.lower() in ["true", "false"] else v
-            for k,v in value_meta_data})
-    
-    result = None
-    traceback = False
-    if chunk_options["eval"]:
-        result, traceback = __purl_capture(content)
+    chunk_options, result, traceback = __purl_common(content, value_meta_data)
     
     blocks = []
     if chunk_options["echo"]:
@@ -92,6 +84,42 @@ def __purl_codeblock(value, format_, meta):
             blocks.append(pandocfilters.CodeBlock(["", [], []], result))
     
     return blocks
+
+def __purl_inline(value, format_, meta):
+    (identifiers, classes, value_meta_data), content = value
+    chunk_options, result, traceback = __purl_common(content, value_meta_data)
+    
+    blocks = []
+    if chunk_options["results"] != "hide" and result is not None and result.strip():
+        if not traceback and chunk_options["results"] == "markup":
+            document = json.loads(
+                subprocess.run(
+                    ["pandoc", "-f", "markdown", "-t", "json"],
+                    input=result.encode(), stdout=subprocess.PIPE
+                ).stdout)
+            if len(document["blocks"]) == 1 and document["blocks"][0]["t"] == "Para":
+                blocks.extend(document["blocks"][0]["c"])
+            else:
+                raise Exception("Not an inline content")
+        else:
+            blocks.append(pandocfilters.Str(result))
+    
+    return blocks
+
+def __purl_common(content, value_meta_data):
+    chunk_options = chunk_defaults.copy()
+    chunk_options.update(
+        {
+            k: eval(v.lower().capitalize())
+                if v.lower() in ["true", "false"] else v
+            for k,v in value_meta_data})
+    
+    result = None
+    traceback = False
+    if chunk_options["eval"]:
+        result, traceback = __purl_capture(content)
+    
+    return chunk_options, result, traceback
 
 def __purl_exec(content):
     tree = ast.parse(content)
