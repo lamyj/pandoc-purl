@@ -1,23 +1,9 @@
-import json
-import subprocess
 import textwrap
 import unittest
 
 import pandoc_purl
-import pandocfilters
 
-class PurlTest(unittest.TestCase):
-    def _purl(self, source):
-        document = subprocess.run(
-                ["pandoc", "-f", "markdown", "-t", "json"],
-                input=source.encode(), stdout=subprocess.PIPE
-            ).stdout
-        
-        altered = pandocfilters.applyJSONFilters([pandoc_purl.purl], document)
-        return json.loads(altered)
-        
-    def _check_blocks(self, baseline, value):
-        self.assertEqual(baseline, value)
+from purl_test import PurlTest
 
 class TestBlock(PurlTest):
     def test_statements(self):
@@ -32,7 +18,7 @@ class TestBlock(PurlTest):
         baseline = [{"t": "CodeBlock", "c": [["", ["python"], []], code]}]
         
         altered = self._purl(source)
-        self._check_blocks(baseline, altered["blocks"])
+        self.assertEqual(baseline, altered["blocks"])
     
     def test_expression(self):
         code = textwrap.dedent("""\
@@ -48,7 +34,7 @@ class TestBlock(PurlTest):
             {"t": "CodeBlock", "c": [["", [], []], "2"]}]
         
         altered = self._purl(source)
-        self._check_blocks(baseline, altered["blocks"])
+        self.assertEqual(baseline, altered["blocks"])
     
     def test_silent(self):
         code = textwrap.dedent("""\
@@ -62,7 +48,7 @@ class TestBlock(PurlTest):
         baseline = [{"t": "CodeBlock", "c": [["", [], []], "2"]}]
         
         altered = self._purl(source)
-        self._check_blocks(baseline, altered["blocks"])
+        self.assertEqual(baseline, altered["blocks"])
     
     def test_no_exec(self):
         code = textwrap.dedent("""\
@@ -76,7 +62,7 @@ class TestBlock(PurlTest):
         baseline = [{"t": "CodeBlock", "c": [["", ["python"], []], code]}]
         
         altered = self._purl(source)
-        self._check_blocks(baseline, altered["blocks"])
+        self.assertEqual(baseline, altered["blocks"])
     
     def test_skipped(self):
         code = textwrap.dedent("""\
@@ -90,7 +76,7 @@ class TestBlock(PurlTest):
         baseline = [{"t": "CodeBlock", "c": [["", ["foobar"], []], code]}]
         
         altered = self._purl(source)
-        self._check_blocks(baseline, altered["blocks"])
+        self.assertEqual(baseline, altered["blocks"])
     
     def test_asis(self):
         code = textwrap.dedent("""\
@@ -104,7 +90,7 @@ class TestBlock(PurlTest):
         baseline = [{"t": "CodeBlock", "c": [["", [], []], "**2**"]}]
         
         altered = self._purl(source)
-        self._check_blocks(baseline, altered["blocks"])
+        self.assertEqual(baseline, altered["blocks"])
     
     def test_hide(self):
         code = textwrap.dedent("""\
@@ -118,7 +104,7 @@ class TestBlock(PurlTest):
         baseline = []
         
         altered = self._purl(source)
-        self._check_blocks(baseline, altered["blocks"])
+        self.assertEqual(baseline, altered["blocks"])
     
     def test_markup(self):
         code = textwrap.dedent("""\
@@ -134,7 +120,7 @@ class TestBlock(PurlTest):
         ]
         
         altered = self._purl(source)
-        self._check_blocks(baseline, altered["blocks"])
+        self.assertEqual(baseline, altered["blocks"])
     
     def test_chunk_defaults(self):
         code = textwrap.dedent("""\
@@ -152,7 +138,7 @@ class TestBlock(PurlTest):
         baseline = [{"t": "CodeBlock", "c": [["", [], []], "2"]}]
         
         altered = self._purl(source)
-        self._check_blocks(baseline, altered["blocks"])
+        self.assertEqual(baseline, altered["blocks"])
         pandoc_purl.chunk_defaults["echo"] = True
     
     def test_classes(self):
@@ -171,8 +157,8 @@ class TestBlock(PurlTest):
         baseline = [{"t": "CodeBlock", "c": [["", [], []], "2"]}]
         
         altered = self._purl(source)
-        self._check_blocks(baseline, altered["blocks"])
-        pandoc_purl.defaults["CodeBlock"] = ["python"]
+        self.assertEqual(baseline, altered["blocks"])
+        pandoc_purl.defaults["classes"]["CodeBlock"] = ["python"]
     
 if __name__ == "__main__":
     unittest.main()
