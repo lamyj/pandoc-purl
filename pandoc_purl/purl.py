@@ -28,7 +28,7 @@ def purl(type_, value, format_, meta_data):
         return
     
     value_meta_data = [
-        (k,v) for (k,v) in value_meta_data if k not in chunk_options]
+        (k,v) for (k,v) in value_meta_data if k not in chunk_defaults]
     
     old_stdout, old_stderr = sys.stdout, sys.stderr
     sys.stdout = io.StringIO()
