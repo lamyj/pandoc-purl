@@ -11,6 +11,13 @@ chunk_defaults = {
     "echo": True, # Whether to show the code chunk
 }
 
+defaults = {
+    "classes": {
+        "CodeBlock": ["python"],
+        "Code": ["python", "p"]
+    }
+}
+
 def purl(type_, value, format_, meta_data):
     if type_ not in ["CodeBlock", "Code"]:
         return
@@ -24,7 +31,7 @@ def purl(type_, value, format_, meta_data):
                 if v.lower() in ["true", "false"] else v
             for k,v in value_meta_data})
     
-    if "python" not in classes or not chunk_options["eval"]:
+    if not (chunk_options["eval"] and any(x in defaults["classes"][type_] for x in classes)):
         return
     
     value_meta_data = [
