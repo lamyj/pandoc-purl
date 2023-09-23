@@ -1,5 +1,7 @@
 import ast
 import io
+import json
+import subprocess
 import sys
 import textwrap
 import traceback
@@ -9,6 +11,7 @@ import pandocfilters
 chunk_defaults = {
     "eval": True, # Whether to run the code chunk
     "echo": True, # Whether to show the code chunk
+    "results": "asis", # if "markup", pass to pandoc; if "hide", hide results
 }
 
 defaults = {
@@ -31,18 +34,15 @@ def purl(type_, value, format_, meta_data):
                 if v.lower() in ["true", "false"] else v
             for k,v in value_meta_data})
     
-    if not (chunk_options["eval"] and any(x in defaults["classes"][type_] for x in classes)):
+    if not any(x in defaults["classes"][type_] for x in classes):
         return
     
-    value_meta_data = [
-        (k,v) for (k,v) in value_meta_data if k not in chunk_defaults]
+    if type_ == "CodeBlock":
+        return __purl_codeblock(value, format_, meta_data)
     
     result, is_traceback = __purl_capture(textwrap.dedent(content))
     
     blocks = []
-    if type_ == "CodeBlock" and chunk_options["echo"]:
-        Block = getattr(pandocfilters, type_)
-        blocks.append(Block((identifiers, classes, value_meta_data), content))
     if result:
         if type_ == "Code":
             if result.startswith("$") and result.endswith("$"):
@@ -56,9 +56,41 @@ def purl(type_, value, format_, meta_data):
                 Block = pandocfilters.Str
                 args = (result,)
             blocks.append(Block(*args))
+    
+    return blocks
+
+def __purl_codeblock(value, format_, meta):
+    (identifiers, classes, value_meta_data), content = value
+    chunk_options = chunk_defaults.copy()
+    chunk_options.update(
+        {
+            k: eval(v.lower().capitalize())
+                if v.lower() in ["true", "false"] else v
+            for k,v in value_meta_data})
+    
+    result = None
+    traceback = False
+    if chunk_options["eval"]:
+        result, traceback = __purl_capture(content)
+    
+    blocks = []
+    if chunk_options["echo"]:
+        value_meta_data = [
+            (k,v) for (k,v) in value_meta_data if k not in chunk_defaults]
+        blocks.append(
+            pandocfilters.CodeBlock(
+                (identifiers, classes, value_meta_data), content))
+    if chunk_options["results"] != "hide" and result is not None and result.strip():
+        if not traceback and chunk_options["results"] == "markup":
+            document = json.loads(
+                subprocess.run(
+                    ["pandoc", "-f", "markdown", "-t", "json"],
+                    input=result.encode(), stdout=subprocess.PIPE
+                ).stdout)
+            blocks.extend(document["blocks"])
         else:
             blocks.append(pandocfilters.CodeBlock(["", [], []], result))
-        
+    
     return blocks
 
 def __purl_exec(content):
