@@ -19,6 +19,19 @@ class TestInline(PurlTest):
         altered = self._purl(source)
         self.assertEqual(baseline, altered["blocks"])
     
+    def test_no_eval(self):
+        source = "Hello `1+1`{.p eval=false} world"
+        baseline = [
+            {'t': 'Para', 'c': [
+                {'t': 'Str', 'c': 'Hello'},
+                {'t': 'Space'},
+                {'t': 'Code', 'c': [['', ['p'], []], '1+1']},
+                {'t': 'Space'},
+                {'t': 'Str', 'c': 'world'}]}]
+        
+        altered = self._purl(source)
+        self.assertEqual(baseline, altered["blocks"])
+    
     def test_asis(self):
         source = "Hello `1+1`{.p results=asis} world"
         baseline = [

@@ -41,25 +41,6 @@ def purl(type_, value, format_, meta_data):
         return __purl_codeblock(value, format_, meta_data)
     elif type_ == "Code":
         return __purl_inline(value, format_, meta_data)
-    
-    result, is_traceback = __purl_capture(textwrap.dedent(content))
-    
-    blocks = []
-    if result:
-        if type_ == "Code":
-            if result.startswith("$") and result.endswith("$"):
-                Block = pandocfilters.Math
-                if result.startswith("$$") and result.endswith("$$"):
-                    math_type = "DisplayMath"
-                else:
-                    math_type = "InlineMath"
-                args = ({"t": math_type}, result.strip("$ "))
-            else:
-                Block = pandocfilters.Str
-                args = (result,)
-            blocks.append(Block(*args))
-    
-    return blocks
 
 def __purl_codeblock(value, format_, meta):
     (identifiers, classes, value_meta_data), content = value
@@ -90,6 +71,12 @@ def __purl_inline(value, format_, meta):
     chunk_options, result, traceback = __purl_common(content, value_meta_data)
     
     blocks = []
+    if not chunk_options["eval"]:
+        value_meta_data = [
+            (k,v) for (k,v) in value_meta_data if k not in chunk_defaults]
+        blocks.append(
+            pandocfilters.Code(
+                (identifiers, classes, value_meta_data), content))
     if chunk_options["results"] != "hide" and result is not None and result.strip():
         if not traceback and chunk_options["results"] == "markup":
             document = json.loads(
