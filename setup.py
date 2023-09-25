@@ -9,7 +9,7 @@ with open(os.path.join(here, "README.md")) as f:
 
 setup(
     name="pandoc-purl",
-    version="0.3.0",
+    version="1.0.0",
     
     description="Dynamic document generation for Pandoc in Python",
     long_description=long_description,
